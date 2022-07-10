@@ -6,17 +6,32 @@ from bson.json_util import dumps
 from flask import request, jsonify
 from importlib.machinery import SourceFileLoader
 from flask import Flask
+from flask_cors import CORS
 
 # Import the helpers module
 helper_module = SourceFileLoader('*', './api/helpers.py').load_module()
 
 api = Flask(__name__)
+cors = CORS(api)
 
 # Select the database
 db = client['lamz-net']
 # Select the collection
-collection_artwork = db['artwork']
-collection_scrapbook = db['scrapbook']
+col_artwork = db['artwork']
+col_scrapbook = db['scrapbook']
+col_info = db['info']
+
+@api.route("/api/v1/info", methods=['GET'])
+def fetch_info():
+    try:
+        
+        info = dumps(col_info.find_one({}))
+        return info
+        
+    except Exception as e:
+        # relay python exception
+        print(e)
+        return f"Something fatal occured within the server. {os.linesep}{os.linesep}{e}", 500
 
 @api.route("/api/v1/art", methods=['GET'])
 def fetch_art():
@@ -33,9 +48,9 @@ def fetch_art():
         query_params = helper_module.parse_url(request.url)
         # Check if dictionary is not empty
         if query_params:
-
+            
             query = {}
-
+            
             for k,v in query_params.items():
                 v = v[0] # for some reason value is always in array form so lets just get that conversion out of the way here
                 match (k):
@@ -53,9 +68,9 @@ def fetch_art():
             # query = {k: int(v[0]) if v[0].isdigit() else None for k, v in query_params.items()}
 
             # Check if there are any records
-            if query and collection_artwork.count_documents(query) > 0:
+            if query and col_artwork.count_documents(query) > 0:
                 # Fetch all the record(s)
-                records_fetched = collection_artwork.find(query)
+                records_fetched = col_artwork.find(query)
                 
                 # Prepare the response
                 return dumps(records_fetched)
